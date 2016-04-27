@@ -1,0 +1,75 @@
+
+------
+# Title: Storm Data analysis
+ 
+------
+========================================================
+
+About this study:
+In this study, we will analysis following two questions:
+- Across the US, which types of events are most harmful with respect to population health?
+-   We will refer those events which cuase highest fatalities and injuries
+- Across the US, which types of events have the greatest economic consequences?
+-   We will refer those events which cause the highest damage on both properties and crop damage
+
+
+## Data Processing section
+```{r, echo=FALSE}
+## 1. briefly summarize the data analysis
+storm_data <- read.csv("StormData.csv",sep=",",stringsAsFactors=FALSE)
+```
+
+## Result: Section 1: Answer 1st question:
+```{r fig.width=7, fig.height=6, echo=FALSE}
+## 2. Get the causalities information
+fatal_dmg <- with(storm_data, tapply(FATALITIES, EVTYPE, sum, na.rm=TRUE))
+inj_dmg <- with(storm_data, tapply(INJURIES, EVTYPE, sum, na.rm=TRUE))
+life_dmg <- fatal_dmg + inj_dmg
+harm_pop <- which(life_dmg==max(life_dmg, na.rm=TRUE))
+print(paste("The most harmful event with respect to population health is: ",
+            names(harm_pop)))
+print(paste("This event caused the causalties are: ", life_dmg[harm_pop]))
+life_2 <- sort(life_dmg)
+print("Here is the summary of the highest casualities:")
+summary(life_dmg)
+print(tail(life_2,15))
+print("Here is the brief summary about harmful event w.r.t. population health:")
+print(paste("The causalities of 90% of those events are ", quantile(life_dmg,0.9), ". In a few events, the casualities will reach from 1000 to 9000."))
+print("the casualities of Tornado is huge and extreme.")
+boxplot(life_dmg, main="Histogram of Causalities")
+```
+
+## Result: Section 2: Answer 2nd question:
+```{r fig.width=7, fig.height=6, echo=TRUE}
+# we are only interested in those events which cause damages in billion of 
+# dollars. therefore, we will subset $PROPDMGEXP or CROPDMGEXP are "B" or "M"
+storm_m <- subset(storm_data, PROPDMGEXP=='M'|PROPDMGEXP=='m'|CROPDMGEXP=='M'
+                |CROPDMGEXP=='m')
+storm_m$PROPDMG <- as.numeric(storm_m$PROPDMG)
+storm_m$CROPDMG <- as.numeric(storm_m$CROPDMG)
+storm_b <- subset(storm_data, PROPDMGEXP=='B'|PROPDMGEXP=='b'|CROPDMGEXP=='B'
+                |CROPDMGEXP=='b')
+storm_b$PROPDMG <- as.numeric(storm_b$PROPDMG)
+storm_b$CROPDMG <- as.numeric(storm_b$CROPDMG)
+storm_mb <- rbind(storm_m, storm_b)
+
+# set up the multiplier, if the PROPDMGEXP is 'K', multiply PROPDMG by 1000
+len <- length(levels(factor(storm_mb$PROPDMGEXP)))
+mult <- rep(1, len)
+names(mult) <- levels(factor(storm_mb$PROPDMGEXP))
+mult["K"] <- 1000
+mult["k"] <- 1000
+mult["M"] <- 1000000
+mult["m"] <- 1000000
+mult["B"] <- 1000000000
+mult["b"] <- 1000000000
+# create another data frame with only a few columns:
+storm_mb$dmg_amt <- mult[storm_mb$PROPDMGEXP] * storm_mb$PROPDMG +
+            mult[storm_mb$CROPDMGEXP] * storm_mb$CROPDMG
+dmg <- with(storm_mb, tapply(dmg_amt, EVTYPE, sum, narm=TRUE))
+dmg <- sort(dmg)
+summary(storm_mb$dmg_amt)
+tail(dmg)
+```
+
+
